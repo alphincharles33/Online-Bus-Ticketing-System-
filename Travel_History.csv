@@ -1,0 +1,6 @@
+ID,Passenger Name,Age,Gender,Source,Destination,Fare
+1,abc,23,Male,Bangalore,Mysore,80.0
+2,bharth,50,Male,Bangalore,Hyderabad,1000.0
+3,ammu,24,Female,Mysore,Bangalore,80.0
+4,abhilash,23,Male,Bangalore,Mysore,80.0
+5,robin,23,Male,Bangalore,Mysore,80.0

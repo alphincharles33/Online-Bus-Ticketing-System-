@@ -1,0 +1,160 @@
+from tkinter import messagebox, simpledialog
+import sqlite3
+from fpdf import FPDF
+import qrcode
+from tkinter import ttk
+
+# Initialize database
+conn = sqlite3.connect('book_ticket.db')
+cursor = conn.cursor()
+
+# Create tables if not exists
+cursor.execute('''CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    passenger_name TEXT,
+    age INTEGER,
+    gender TEXT,
+    source TEXT,
+    destination TEXT,
+    fare REAL
+)''')
+conn.commit()
+
+# Function to generate a beautiful PDF ticket
+def generate_ticket_pdf(ticket_id):
+    cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
+    ticket = cursor.fetchone()
+
+    if ticket:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", style='B', size=16)
+        pdf.cell(200, 10, txt="Smart Ticketing System", ln=True, align='C')
+        pdf.ln(5)
+
+        # Draw a box for ticket details
+        pdf.set_line_width(0.5)
+        pdf.rect(10, 30, 190, 60)
+
+        pdf.set_font("Arial", size=12)
+        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Ticket ID: {ticket[0]}", ln=True)
+        pdf.cell(200, 10, txt=f"Passenger Name: {ticket[1]}", ln=True)
+        pdf.cell(200, 10, txt=f"Age: {ticket[2]}", ln=True)
+        pdf.cell(200, 10, txt=f"Gender: {ticket[3]}", ln=True)
+        pdf.cell(200, 10, txt=f"Source: {ticket[4]}", ln=True)
+        pdf.cell(200, 10, txt=f"Destination: {ticket[5]}", ln=True)
+        pdf.cell(200, 10, txt=f"Fare: {ticket[6]} INR", ln=True)
+
+        # QR Code Generation
+        qr_data = f"Ticket ID: {ticket[0]}\nName: {ticket[1]}\nFrom: {ticket[4]} To: {ticket[5]}\nFare: {ticket[6]} INR"
+        qr = qrcode.make(qr_data)
+        qr_file = f"ticket_{ticket_id}.png"
+        qr.save(qr_file)
+
+        pdf.image(qr_file, x=80, y=100, w=50, h=50)  # Adding QR Code to PDF
+
+        pdf_output = f"Ticket_{ticket_id}.pdf"
+        pdf.output(pdf_output)
+        messagebox.showinfo("Success", f"Ticket PDF generated: {pdf_output}")
+    else:
+        messagebox.showerror("Error", "Ticket not found!")
+
+# Function to add a ticket
+def add_ticket():
+    name = name_entry.get()
+    age = age_entry.get()
+    gender = gender_combobox.get()
+    source = source_combobox.get()
+    destination = destination_combobox.get()
+    fare = fare_entry.get()
+
+    if not (name and age and gender and source and destination and fare):
+        messagebox.showerror("Input Error", "All fields are required!")
+        return
+
+    try:
+        age = int(age)
+        fare = float(fare)
+        if age < 0 or fare < 0:
+            raise ValueError("Age and Fare must be non-negative.")
+    except ValueError as e:
+        messagebox.showerror("Input Error", str(e))
+        return
+
+    try:
+        cursor.execute("INSERT INTO tickets (passenger_name, age, gender, source, destination, fare) VALUES (?, ?, ?, ?, ?, ?)",
+                       (name, age, gender, source, destination, fare))
+        conn.commit()
+        messagebox.showinfo("Success", "Ticket Booked successfully!")
+        generate_ticket_pdf(cursor.lastrowid)  # Generate the PDF immediately after booking the ticket
+        clear_fields()
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+# Function to clear input fields
+def clear_fields():
+    name_entry.delete(0, tk.END)
+    age_entry.delete(0, tk.END)
+    gender_combobox.set('')
+    source_combobox.set('')
+    destination_combobox.set('')
+    fare_entry.delete(0, tk.END)
+
+# GUI Setup (same as before)
+import tkinter as tk
+from tkinter import ttk
+
+window = tk.Tk()
+window.title("Online Bus Ticketing System and Analysis")
+window.geometry("1300x700")
+
+# Background image
+background_img = Image.open(r"D:\LoginWare-internship\bus_projects\mage11.png")
+background_img = background_img.resize((1300, 700))
+background_photo = ImageTk.PhotoImage(background_img)
+background_label = tk.Label(window, image=background_photo)
+background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+frame = ttk.Frame(window, padding="20")
+frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+# Form Fields
+name_label = ttk.Label(frame, text="Passenger Name:")
+name_label.grid(row=0, column=0, sticky=tk.W, pady=5, padx=10)
+name_entry = ttk.Entry(frame)
+name_entry.grid(row=0, column=1, pady=5, padx=10)
+
+age_label = ttk.Label(frame, text="Age:")
+age_label.grid(row=1, column=0, sticky=tk.W, pady=5, padx=10)
+age_entry = ttk.Entry(frame)
+age_entry.grid(row=1, column=1, pady=5, padx=10)
+
+gender_label = ttk.Label(frame, text="Gender:")
+gender_label.grid(row=2, column=0, sticky=tk.W, pady=5, padx=10)
+gender_combobox = ttk.Combobox(frame, values=["Male", "Female", "Other"])
+gender_combobox.grid(row=2, column=1, pady=5, padx=10)
+
+source_label = ttk.Label(frame, text="Source:")
+source_label.grid(row=3, column=0, sticky=tk.W, pady=5, padx=10)
+source_combobox = ttk.Combobox(frame, values=["Bidar", "Bangalore", "Mysore", "Delhi", "Hyderabad"])
+source_combobox.grid(row=3, column=1, pady=5, padx=10)
+
+destination_label = ttk.Label(frame, text="Destination:")
+destination_label.grid(row=4, column=0, sticky=tk.W, pady=5, padx=10)
+destination_combobox = ttk.Combobox(frame, values=["Bidar", "Bangalore", "Mysore", "Delhi", "Hyderabad"])
+destination_combobox.grid(row=4, column=1, pady=5, padx=10)
+
+fare_label = ttk.Label(frame, text="Fare:")
+fare_label.grid(row=5, column=0, sticky=tk.W, pady=5, padx=10)
+fare_entry = ttk.Entry(frame)
+fare_entry.grid(row=5, column=1, pady=5, padx=10)
+
+add_button = ttk.Button(frame, text="Book Ticket", command=add_ticket)
+add_button.grid(row=6, column=0, pady=20, padx=10)
+
+clear_button = ttk.Button(frame, text="Clear", command=clear_fields)
+clear_button.grid(row=6, column=1, pady=20, padx=10)
+
+# Start Tkinter main loop
+window.mainloop()
